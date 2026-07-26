@@ -1,1 +1,103 @@
-Single-database configuration for Flask.
+# Workout Tracker API
+
+A Flask + SQLAlchemy backend for tracking workouts and exercises, with a many-to-many relationship between them via a `WorkoutExercise` join table (tracking reps, sets, and duration per exercise per workout).
+
+## Tech Stack
+
+- Flask
+- Flask-SQLAlchemy
+- Flask-Migrate
+- Marshmallow
+
+## Setup
+
+```bash
+git clone <your-repo-url>
+cd workout-tracker-api/server
+pipenv install
+pipenv shell
+```
+
+## Initialize the database
+
+```bash
+export FLASK_APP=app.py
+flask db init
+flask db migrate -m "initial migration"
+flask db upgrade head
+```
+
+## Seed the database
+
+```bash
+python3 seed.py
+```
+
+This clears existing data and creates sample exercises, workouts, and their links. Safe to re-run any time to reset your data.
+
+## Running the server
+
+```bash
+python3 app.py
+```
+
+Server runs at `http://127.0.0.1:5555`.
+
+## Models
+
+**Exercise**: `id`, `name`, `category`, `equipment_needed`
+
+**Workout**: `id`, `date`, `duration_minutes`, `notes`
+
+**WorkoutExercise** (join table): `id`, `workout_id`, `exercise_id`, `reps`, `sets`, `duration_seconds`
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|--------------|
+| GET | `/workouts` | List all workouts |
+| GET | `/workouts/<id>` | Show a workout with its exercises |
+| POST | `/workouts` | Create a workout |
+| DELETE | `/workouts/<id>` | Delete a workout (and its WorkoutExercises) |
+| GET | `/exercises` | List all exercises |
+| GET | `/exercises/<id>` | Show an exercise with its workouts |
+| POST | `/exercises` | Create an exercise |
+| DELETE | `/exercises/<id>` | Delete an exercise (and its WorkoutExercises) |
+| POST | `/workouts/<workout_id>/exercises/<exercise_id>/workout_exercises` | Link an exercise to a workout with reps/sets/duration |
+
+### Example requests
+
+Create a workout:
+```bash
+curl -X POST http://127.0.0.1:5555/workouts \
+  -H "Content-Type: application/json" \
+  -d '{"date": "2026-07-15", "duration_minutes": 45, "notes": "Upper body"}'
+```
+
+Create an exercise:
+```bash
+curl -X POST http://127.0.0.1:5555/exercises \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Pull-up", "category": "strength", "equipment_needed": true}'
+```
+
+Link an exercise to a workout:
+```bash
+curl -X POST http://127.0.0.1:5555/workouts/1/exercises/1/workout_exercises \
+  -H "Content-Type: application/json" \
+  -d '{"reps": 10, "sets": 3}'
+```
+
+## Validation layers
+
+This API enforces data integrity at three levels:
+1. **Table constraints** — database-level checks (e.g., `duration_minutes > 0`, `reps >= 0`, `sets >= 0`)
+2. **Model validations** — SQLAlchemy `@validates` decorators on `Exercise.name`, `Exercise.category`, `Workout.duration_minutes`
+3. **Schema validations** — Marshmallow `@validates` decorators, catching invalid input before it reaches the database layer
+
+## Testing
+
+Run the test suite with:
+```bash
+pytest
+```
