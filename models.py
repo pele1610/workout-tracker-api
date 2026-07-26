@@ -12,8 +12,12 @@ class Exercise(db.Model):
     category = db.Column(db.String(50), nullable=False)
     equipment_needed = db.Column(db.Boolean, default=False)
 
-    workout_exercises = db.relationship("WorkoutExercise", back_populates="exercise")
-    workouts = db.relationship("Workout", secondary="workout_exercises", back_populates="exercises")
+    workout_exercises = db.relationship(
+        "WorkoutExercise", back_populates="exercise", overlaps="workouts,exercises"
+    )
+    workouts = db.relationship(
+        "Workout", secondary="workout_exercises", back_populates="exercises", overlaps="workout_exercises"
+    )
 
     @validates("name")
     def validate_name(self, key, value):
@@ -37,8 +41,12 @@ class Workout(db.Model):
     duration_minutes = db.Column(db.Integer, nullable=False)
     notes = db.Column(db.Text)
 
-    workout_exercises = db.relationship("WorkoutExercise", back_populates="workout")
-    exercises = db.relationship("Exercise", secondary="workout_exercises", back_populates="workouts")
+    workout_exercises = db.relationship(
+        "WorkoutExercise", back_populates="workout", overlaps="exercises,workouts"
+    )
+    exercises = db.relationship(
+        "Exercise", secondary="workout_exercises", back_populates="workouts", overlaps="workout_exercises"
+    )
 
     __table_args__ = (
         db.CheckConstraint("duration_minutes > 0", name="check_duration_positive"),
@@ -61,8 +69,12 @@ class WorkoutExercise(db.Model):
     sets = db.Column(db.Integer)
     duration_seconds = db.Column(db.Integer)
 
-    workout = db.relationship("Workout", back_populates="workout_exercises")
-    exercise = db.relationship("Exercise", back_populates="workout_exercises")
+    workout = db.relationship(
+        "Workout", back_populates="workout_exercises", overlaps="exercises,workouts"
+    )
+    exercise = db.relationship(
+        "Exercise", back_populates="workout_exercises", overlaps="exercises,workouts"
+    )
 
     __table_args__ = (
         db.CheckConstraint("reps >= 0", name="check_reps_non_negative"),
