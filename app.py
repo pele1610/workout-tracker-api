@@ -89,5 +89,83 @@ def delete_workout(id):
 
     return jsonify({"message": f"Workout {id} deleted"}), 200
 
+@app.route("/exercises", methods=["GET"])
+def get_exercises():
+    exercises = Exercise.query.all()
+    result = []
+    for exercise in exercises:
+        result.append({
+            "id": exercise.id,
+            "name": exercise.name,
+            "category": exercise.category,
+            "equipment_needed": exercise.equipment_needed
+        })
+    return jsonify(result), 200
+
+
+@app.route("/exercises/<int:id>", methods=["GET"])
+def get_exercise(id):
+    exercise = Exercise.query.get(id)
+    if exercise is None:
+        return jsonify({"error": "Exercise not found"}), 404
+
+    workouts_list = []
+    for workout in exercise.workouts:
+        workouts_list.append({
+            "id": workout.id,
+            "date": str(workout.date)
+        })
+
+    result = {
+        "id": exercise.id,
+        "name": exercise.name,
+        "category": exercise.category,
+        "equipment_needed": exercise.equipment_needed,
+        "workouts": workouts_list
+    }
+    return jsonify(result), 200
+
+
+@app.route("/exercises", methods=["POST"])
+def create_exercise():
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Request body must be JSON"}), 400
+
+    try:
+        new_exercise = Exercise(
+            name=data.get("name"),
+            category=data.get("category"),
+            equipment_needed=data.get("equipment_needed", False)
+        )
+        db.session.add(new_exercise)
+        db.session.commit()
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
+
+    return jsonify({
+        "id": new_exercise.id,
+        "name": new_exercise.name,
+        "category": new_exercise.category,
+        "equipment_needed": new_exercise.equipment_needed
+    }), 201
+
+
+@app.route("/exercises/<int:id>", methods=["DELETE"])
+def delete_exercise(id):
+    exercise = Exercise.query.get(id)
+    if exercise is None:
+        return jsonify({"error": "Exercise not found"}), 404
+
+    for we in exercise.workout_exercises:
+        db.session.delete(we)
+
+    db.session.delete(exercise)
+    db.session.commit()
+
+    return jsonify({"message": f"Exercise {id} deleted"}), 200
+
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
