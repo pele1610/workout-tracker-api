@@ -1,5 +1,6 @@
 from flask import Flask, make_response, jsonify, request
 from flask_migrate import Migrate
+from datetime import date
 
 from models import *
 
@@ -47,6 +48,46 @@ def get_workout(id):
         "exercises": exercises_list
     }
     return jsonify(result), 200
+@app.route("/workouts", methods=["POST"])
+def create_workout():
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Request body must be JSON"}), 400
+
+    try:
+        new_workout = Workout(
+            date=date.fromisoformat(data.get("date")),
+            duration_minutes=data.get("duration_minutes"),
+            notes=data.get("notes")
+        )
+        db.session.add(new_workout)
+        db.session.commit()
+    except (ValueError, TypeError) as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
+
+    return jsonify({
+        "id": new_workout.id,
+        "date": str(new_workout.date),
+        "duration_minutes": new_workout.duration_minutes,
+        "notes": new_workout.notes
+    }), 201
+
+
+@app.route("/workouts/<int:id>", methods=["DELETE"])
+def delete_workout(id):
+    workout = Workout.query.get(id)
+    if workout is None:
+        return jsonify({"error": "Workout not found"}), 404
+
+    for we in workout.workout_exercises:
+        db.session.delete(we)
+
+    db.session.delete(workout)
+    db.session.commit()
+
+    return jsonify({"message": f"Workout {id} deleted"}), 200
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
